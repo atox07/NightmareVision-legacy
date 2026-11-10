@@ -4308,11 +4308,19 @@ class PlayState extends MusicBeatState
 	{
 		preventLuaRemove = true;
 		
-		instance = null;
-		
-		for (script in funkyScripts)
+		Main.writeDiagnostic("Destroying PlayState scripts");
+		final scriptsToDestroy = funkyScripts.copy();
+		for (script in scriptsToDestroy)
 		{
 			script.call("onDestroy", []);
+		}
+		for (tween in modchartTweens) tween.cancel();
+		modchartTweens.clear();
+		for (timer in modchartTimers) timer.cancel();
+		modchartTimers.clear();
+		for (script in scriptsToDestroy)
+		{
+			Main.writeDiagnostic("Closing script: " + script.scriptName);
 			script = FlxDestroyUtil.destroy(script);
 		}
 		
@@ -4328,6 +4336,8 @@ class PlayState extends MusicBeatState
 			FlxG.stage.removeEventListener(KeyboardEvent.KEY_UP, onKeyRelease);
 		}
 		super.destroy();
+		instance = null;
+		Main.writeDiagnostic("Destroyed PlayState");
 	}
 	
 	public function removeLua(lua:FunkinLua)
