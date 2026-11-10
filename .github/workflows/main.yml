@@ -13,14 +13,12 @@ jobs:
         with:
           haxe-version: 4.3.7
 
-      - name: Install Haxelib
+      - name: Install project dependencies
         shell: bash
         run: |
-          ls -la
           haxelib setup C:/haxelib
-          haxelib newrepo
-          haxelib install hmm
-          haxelib run hmm install
+          haxelib --global --always install hxpkg 1.6.2
+          haxelib --global run hxpkg install
           haxelib list
 
       - name: Create Version Tag
