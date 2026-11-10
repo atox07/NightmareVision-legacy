@@ -59,6 +59,7 @@ class FunkinLua extends FunkinScript
 	public var camTarget:FlxCamera;
 	
 	var gonnaClose:Bool = false;
+	var lastCallbackErrors:Map<String, String> = [];
 	
 	public var accessedProps:Map<String, Dynamic> = null;
 	
@@ -799,6 +800,8 @@ class FunkinLua extends FunkinScript
 			
 			if (leObj != null)
 			{
+				if (PlayState.instance.stage.members.contains(leObj))
+					return PlayState.instance.stage.members.indexOf(leObj);
 				return getInstance().members.indexOf(leObj);
 			}
 			luaTrace("Object " + obj + " doesn't exist!");
@@ -814,6 +817,12 @@ class FunkinLua extends FunkinScript
 			
 			if (leObj != null)
 			{
+				if (PlayState.instance.stage.members.contains(leObj))
+				{
+					PlayState.instance.stage.remove(leObj, true);
+					PlayState.instance.stage.insert(position, leObj);
+					return;
+				}
 				getInstance().remove(leObj, true);
 				getInstance().insert(position, leObj);
 				return;
@@ -1630,16 +1639,14 @@ class FunkinLua extends FunkinScript
 						}
 						else
 						{
-							var position:Int = PlayState.instance.members.indexOf(PlayState.instance.gfGroup);
-							if (PlayState.instance.members.indexOf(PlayState.instance.boyfriendGroup) < position)
+							final stage = PlayState.instance.stage;
+							var position = stage.members.length;
+							for (group in [PlayState.instance.gfGroup, PlayState.instance.dadGroup, PlayState.instance.boyfriendGroup])
 							{
-								position = PlayState.instance.members.indexOf(PlayState.instance.boyfriendGroup);
+								final index = stage.members.indexOf(group);
+								if (index >= 0 && index < position) position = index;
 							}
-							else if (PlayState.instance.members.indexOf(PlayState.instance.dadGroup) < position)
-							{
-								position = PlayState.instance.members.indexOf(PlayState.instance.dadGroup);
-							}
-							PlayState.instance.insert(position, shit);
+							stage.insert(position, shit);
 						}
 					}
 					shit.wasAdded = true;
@@ -1743,6 +1750,7 @@ class FunkinLua extends FunkinScript
 			
 			if (pee.wasAdded)
 			{
+				PlayState.instance.stage.remove(pee, true);
 				getInstance().remove(pee, true);
 				pee.wasAdded = false;
 			}
@@ -2844,7 +2852,11 @@ class FunkinLua extends FunkinScript
 			if (result != 0)
 			{
 				var err = getErrorMessage();
-				Main.writeDiagnostic("Lua callback error [" + scriptName + "." + func + "]: " + err);
+				if (lastCallbackErrors.get(func) != err)
+				{
+					lastCallbackErrors.set(func, err);
+					Main.writeDiagnostic("Lua callback error [" + scriptName + "." + func + "]: " + err);
+				}
 				if (errorHandler != null)
 				{
 					errorHandler(err);
@@ -2857,6 +2869,7 @@ class FunkinLua extends FunkinScript
 			}
 			else
 			{
+				lastCallbackErrors.remove(func);
 				if (result != null)
 				{
 					var conv:Dynamic = Convert.fromLua(lua, -1);
@@ -2897,6 +2910,15 @@ class FunkinLua extends FunkinScript
 	{
 		var coverMeInPiss:Dynamic = PlayState.instance.getLuaObject(objectName, checkForTextsToo);
 		if (coverMeInPiss == null) coverMeInPiss = getVarInArray(getInstance(), objectName);
+		if (coverMeInPiss == null && PlayState.instance.playHUD != null)
+		{
+			switch (objectName)
+			{
+				case "iconP1", "iconP2", "healthBar", "scoreTxt", "timeTxt", "timeBar":
+					coverMeInPiss = Reflect.getProperty(PlayState.instance.playHUD, objectName);
+				default:
+			}
+		}
 		
 		return coverMeInPiss;
 	}
