@@ -2444,6 +2444,7 @@ class PlayState extends MusicBeatState
 				modManager.updateObject(curDecBeat, strum, pos, 1);
 				strum.x = pos.x + script_STRUMOffsets[strum.noteData].x;
 				strum.y = pos.y + script_STRUMOffsets[strum.noteData].y;
+				strum.applyLuaPosition();
 			});
 			
 			playerStrums.forEachAlive(function(strum:StrumNote) {
@@ -2451,6 +2452,7 @@ class PlayState extends MusicBeatState
 				modManager.updateObject(curDecBeat, strum, pos, 0);
 				strum.x = pos.x + script_STRUMOffsets[strum.noteData].x;
 				strum.y = pos.y + script_STRUMOffsets[strum.noteData].y;
+				strum.applyLuaPosition();
 			});
 			
 			if (extraFields.length > 0)
@@ -2462,6 +2464,7 @@ class PlayState extends MusicBeatState
 						modManager.updateObject(curDecBeat, strum, pos, extra);
 						strum.x = pos.x + script_STRUMOffsets[strum.noteData].x;
 						strum.y = pos.y + script_STRUMOffsets[strum.noteData].y;
+						strum.applyLuaPosition();
 					});
 				}
 			}
@@ -2528,6 +2531,12 @@ class PlayState extends MusicBeatState
 				
 				daNote.x += script_NOTEOffsets[daNote.noteData].x;
 				daNote.y += script_NOTEOffsets[daNote.noteData].y;
+				final receptor = field.members[daNote.noteData];
+				if (receptor != null)
+				{
+					daNote.x += receptor.luaOffsetX;
+					daNote.y += receptor.luaOffsetY;
+				}
 				
 				if (field.inControl && field.autoPlayed)
 				{
