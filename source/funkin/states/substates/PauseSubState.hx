@@ -334,8 +334,12 @@ class PauseSubState extends MusicBeatSubstate
 	
 	override function destroy()
 	{
-		if (isHardcodedState()) pauseMusic.destroy();
-		scriptGroup.call('onDestroy', []);
+		if (pauseMusic != null)
+		{
+			FlxG.sound.list.remove(pauseMusic, true);
+			if (pauseMusic.exists) pauseMusic.destroy();
+			pauseMusic = null;
+		}
 		
 		super.destroy();
 	}
