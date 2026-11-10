@@ -160,6 +160,20 @@ class Main extends Sprite
 #if CRASH_HANDLER
 class FNFGame extends FlxGame
 {
+	var crashScreen:openfl.display.Sprite;
+	var hasCrashed:Bool = false;
+
+	function handleUncaughtError(event:openfl.events.UncaughtErrorEvent):Void
+	{
+		event.preventDefault();
+		onCrash(event.error);
+	}
+
+	function blockGameplayKeys(event:openfl.events.KeyboardEvent):Void
+	{
+		if (hasCrashed) event.stopImmediatePropagation();
+	}
+
 	private static function crashGame()
 	{
 		null
@@ -171,6 +185,9 @@ class FNFGame extends FlxGame
 	 */
 	override function create(_):Void
 	{
+		loaderInfo.uncaughtErrorEvents.addEventListener(openfl.events.UncaughtErrorEvent.UNCAUGHT_ERROR, handleUncaughtError);
+		Lib.current.stage.addEventListener(openfl.events.KeyboardEvent.KEY_DOWN, blockGameplayKeys, true, 1000);
+		Lib.current.stage.addEventListener(openfl.events.KeyboardEvent.KEY_UP, blockGameplayKeys, true, 1000);
 		try
 		{
 			_skipSplash = true;
@@ -184,6 +201,7 @@ class FNFGame extends FlxGame
 	
 	override function onFocus(_):Void
 	{
+		if (hasCrashed) return;
 		try
 		{
 			super.onFocus(_);
@@ -196,6 +214,7 @@ class FNFGame extends FlxGame
 	
 	override function onFocusLost(_):Void
 	{
+		if (hasCrashed) return;
 		try
 		{
 			super.onFocusLost(_);
@@ -211,6 +230,7 @@ class FNFGame extends FlxGame
 	 */
 	override function onEnterFrame(_):Void
 	{
+		if (hasCrashed) return;
 		try
 		{
 			super.onEnterFrame(_);
@@ -227,6 +247,7 @@ class FNFGame extends FlxGame
 	 */
 	override function update():Void
 	{
+		if (hasCrashed) return;
 		#if CRASH_TEST
 		if (FlxG.keys.justPressed.F9) crashGame();
 		#end
@@ -245,6 +266,7 @@ class FNFGame extends FlxGame
 	 */
 	override function draw():Void
 	{
+		if (hasCrashed) return;
 		try
 		{
 			super.draw();
@@ -255,25 +277,83 @@ class FNFGame extends FlxGame
 		}
 	}
 	
-	private final function onCrash(e:haxe.Exception):Void
+	private final function onCrash(e:Dynamic):Void
 	{
-		var emsg:String = "";
-		for (stackItem in haxe.CallStack.exceptionStack(true))
-		{
-			switch (stackItem)
-			{
-				case FilePos(s, file, line, column):
-					emsg += file + " (line " + line + ")\n";
-				default:
-					Sys.println(stackItem);
-					trace(stackItem);
-			}
-		}
-		
-		final crashReport = 'Error caught:' + e.message + '\nCallstack:\n' + emsg;
+		if (hasCrashed) return;
+		hasCrashed = true;
+		final stack = haxe.CallStack.toString(haxe.CallStack.exceptionStack(true));
+		final message = Std.string(e);
+		final crashReport = 'Error caught: ' + message + '\nCallstack:\n' + stack;
 		Main.writeDiagnostic(crashReport);
-		
-		FlxG.switchState(new funkin.backend.FallbackState(crashReport, () -> FlxG.switchState(() -> new MainMenuState())));
+
+		// Use OpenFL directly so displaying the error does not load mod assets
+		// or destroy the partially initialized gameplay state.
+		final screenStage = Lib.current.stage;
+		crashScreen = new openfl.display.Sprite();
+		crashScreen.graphics.beginFill(0x151821);
+		crashScreen.graphics.drawRect(0, 0, screenStage.stageWidth, screenStage.stageHeight);
+		crashScreen.graphics.endFill();
+		screenStage.addChild(crashScreen);
+
+		final title = new openfl.text.TextField();
+		title.defaultTextFormat = new openfl.text.TextFormat("_sans", 28, 0xFF8585, true);
+		title.x = 24;
+		title.y = 20;
+		title.width = screenStage.stageWidth - 48;
+		title.height = 45;
+		title.text = "NightmareVision ha interrotto la partita";
+		crashScreen.addChild(title);
+
+		final details = new openfl.text.TextField();
+		details.defaultTextFormat = new openfl.text.TextFormat("_sans", 16, 0xFFFFFF);
+		details.x = 24;
+		details.y = 80;
+		details.width = screenStage.stageWidth - 48;
+		details.height = Math.max(80, screenStage.stageHeight - 170);
+		details.multiline = true;
+		details.wordWrap = true;
+		details.selectable = true;
+		details.text = "Il motore ha incontrato un errore durante l'esecuzione.\n"
+			+ "Il rapporto viene scritto in nightmarevision-diagnostic.log nella cartella di avvio.\n"
+			+ "Puoi selezionare il testo e scorrerlo con la rotella.\n\n" + crashReport;
+		details.addEventListener(openfl.events.MouseEvent.MOUSE_WHEEL, event -> {
+			details.scrollV -= event.delta;
+		});
+		crashScreen.addChild(details);
+
+		final restart = new openfl.text.TextField();
+		restart.defaultTextFormat = new openfl.text.TextFormat("_sans", 20, 0xFFFFFF, true);
+		restart.background = true;
+		restart.backgroundColor = 0x354A70;
+		restart.x = 24;
+		restart.y = Math.max(170, screenStage.stageHeight - 65);
+		restart.width = 300;
+		restart.height = 38;
+		restart.selectable = false;
+		restart.text = "Riavvia il motore";
+		restart.addEventListener(openfl.events.MouseEvent.CLICK, _ -> {
+			try
+			{
+				FlxG.resetGame();
+				screenStage.removeChild(crashScreen);
+				crashScreen = null;
+				hasCrashed = false;
+			}
+			catch (error:Dynamic)
+			{
+				Main.writeDiagnostic("Recovery error: " + error);
+				details.appendText("\n\nRiavvio fallito: " + Std.string(error));
+			}
+		});
+		crashScreen.addChild(restart);
+		try
+		{
+			FlxG.sound.music?.stop();
+		}
+		catch (error:Dynamic)
+		{
+			Main.writeDiagnostic("Could not stop music after crash: " + error);
+		}
 	}
 }
 #end
