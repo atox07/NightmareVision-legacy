@@ -47,7 +47,7 @@ class Stage extends FlxTypedGroup<FlxBasic>
 		else
 		{
 			scriptFile = FunkinIris.getPath('stages/$curStage');
-			buildHX(scriptFile);
+			if (FunkinAssets.exists(scriptFile)) buildHX(scriptFile);
 		}
 		
 		#if LUA_ALLOWED
