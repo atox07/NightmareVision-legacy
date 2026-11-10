@@ -969,7 +969,8 @@ class FunkinLua extends FunkinScript
 			
 			if (testicle != null)
 			{
-				PlayState.instance.modchartTweens.set(tag, FlxTween.tween(testicle, {x: value}, duration,
+				testicle.luaX = testicle.x;
+				PlayState.instance.modchartTweens.set(tag, FlxTween.tween(testicle, {luaX: value}, duration,
 					{
 						ease: getFlxEaseByString(ease),
 						onComplete: function(twn:FlxTween) {
@@ -986,7 +987,8 @@ class FunkinLua extends FunkinScript
 			
 			if (testicle != null)
 			{
-				PlayState.instance.modchartTweens.set(tag, FlxTween.tween(testicle, {y: value}, duration,
+				testicle.luaY = testicle.y;
+				PlayState.instance.modchartTweens.set(tag, FlxTween.tween(testicle, {luaY: value}, duration,
 					{
 						ease: getFlxEaseByString(ease),
 						onComplete: function(twn:FlxTween) {
@@ -2471,6 +2473,16 @@ class FunkinLua extends FunkinScript
 	}
 	public static function setVarInArray(instance:Dynamic, variable:String, value:Dynamic):Any
 	{
+		if (instance is StrumNote)
+		{
+			final strum:StrumNote = cast instance;
+			switch (variable)
+			{
+				case "x": strum.luaX = value;
+				case "y": strum.luaY = value;
+				default:
+			}
+		}
 		var shit:Array<String> = variable.split('[');
 		if (shit.length > 1)
 		{
@@ -2581,10 +2593,10 @@ class FunkinLua extends FunkinScript
 			{
 				coverMeInPiss = Reflect.getProperty(coverMeInPiss, killMe[i]);
 			}
-			Reflect.setProperty(coverMeInPiss, killMe[killMe.length - 1], value);
+			setVarInArray(coverMeInPiss, killMe[killMe.length - 1], value);
 			return;
 		}
-		Reflect.setProperty(leArray, variable, value);
+		setVarInArray(leArray, variable, value);
 	}
 	
 	function resetTextTag(tag:String)
