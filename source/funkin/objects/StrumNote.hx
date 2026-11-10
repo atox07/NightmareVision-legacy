@@ -44,6 +44,18 @@ class StrumNote extends FlxSprite
 	// public var zIndex:Float = 0;
 	// public var desiredZIndex:Float = 0;
 	public var z:Float = 0;
+	public var luaX:Null<Float>;
+	public var luaY:Null<Float>;
+	public var luaOffsetX:Float = 0;
+	public var luaOffsetY:Float = 0;
+
+	public function applyLuaPosition():Void
+	{
+		luaOffsetX = luaX == null ? 0 : luaX - x;
+		luaOffsetY = luaY == null ? 0 : luaY - y;
+		x += luaOffsetX;
+		y += luaOffsetY;
+	}
 	
 	override function set_alpha(val:Float)
 	{
