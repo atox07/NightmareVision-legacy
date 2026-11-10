@@ -800,6 +800,9 @@ class FunkinLua extends FunkinScript
 			
 			if (leObj != null)
 			{
+				final hud = PlayState.instance.playHUD;
+				if (hud != null && hud.members.contains(leObj))
+					return hud.members.indexOf(leObj);
 				if (PlayState.instance.stage.members.contains(leObj))
 					return PlayState.instance.stage.members.indexOf(leObj);
 				return getInstance().members.indexOf(leObj);
@@ -817,6 +820,19 @@ class FunkinLua extends FunkinScript
 			
 			if (leObj != null)
 			{
+				final hud = PlayState.instance.playHUD;
+				if (hud != null && (hud.members.contains(leObj)
+					|| (leObj is ModchartSprite && leObj.cameras.contains(PlayState.instance.camHUD))))
+				{
+					if (hud.members.contains(leObj))
+						hud.remove(leObj, true);
+					else if (PlayState.instance.stage.members.contains(leObj))
+						PlayState.instance.stage.remove(leObj, true);
+					else
+						getInstance().remove(leObj, true);
+					hud.insert(Std.int(FlxMath.bound(position, 0, hud.length)), leObj);
+					return;
+				}
 				if (PlayState.instance.stage.members.contains(leObj))
 				{
 					PlayState.instance.stage.remove(leObj, true);
@@ -1750,8 +1766,7 @@ class FunkinLua extends FunkinScript
 			
 			if (pee.wasAdded)
 			{
-				PlayState.instance.stage.remove(pee, true);
-				getInstance().remove(pee, true);
+				detachLuaSprite(pee);
 				pee.wasAdded = false;
 			}
 			
@@ -2600,10 +2615,21 @@ class FunkinLua extends FunkinScript
 		pee.kill();
 		if (pee.wasAdded)
 		{
-			PlayState.instance.remove(pee, true);
+			detachLuaSprite(pee);
 		}
 		pee.destroy();
 		PlayState.instance.modchartSprites.remove(tag);
+	}
+
+	static function detachLuaSprite(sprite:ModchartSprite):Void
+	{
+		final game = PlayState.instance;
+		if (game.playHUD != null && game.playHUD.members.contains(sprite))
+			game.playHUD.remove(sprite, true);
+		else if (game.stage.members.contains(sprite))
+			game.stage.remove(sprite, true);
+		else
+			getInstance().remove(sprite, true);
 	}
 	
 	function cancelTween(tag:String)
@@ -2822,6 +2848,48 @@ class FunkinLua extends FunkinScript
 		return Function_Continue;
 	}*/
 	#if LUA_ALLOWED
+	function pushLuaValue(value:Dynamic, depth:Int = 0):Void
+	{
+		if (Lua.checkstack(lua, 4) == 0) throw "Lua stack capacity exceeded";
+		if (depth >= 8)
+		{
+			Lua.pushnil(lua);
+			return;
+		}
+		switch (Type.typeof(value))
+		{
+			case ValueType.TClass(Array):
+				final values:Array<Dynamic> = cast value;
+				Lua.createtable(lua, values.length, 0);
+				for (index in 0...values.length)
+				{
+					Lua.pushinteger(lua, index + 1);
+					pushLuaValue(values[index], depth + 1);
+					Lua.settable(lua, -3);
+				}
+			case ValueType.TObject:
+				final fields = Reflect.fields(value);
+				Lua.createtable(lua, 0, fields.length);
+				for (field in fields)
+				{
+					Lua.pushstring(lua, field);
+					pushLuaValue(Reflect.field(value, field), depth + 1);
+					Lua.settable(lua, -3);
+				}
+			case ValueType.TClass(haxe.ds.StringMap) | ValueType.TClass(haxe.ds.ObjectMap):
+				final values:Dynamic = value;
+				Lua.createtable(lua, 0, 0);
+				for (key in (values.keys():Iterator<Dynamic>))
+				{
+					Lua.pushstring(lua, Std.string(key));
+					pushLuaValue(values.get(key), depth + 1);
+					Lua.settable(lua, -3);
+				}
+			default:
+				if (!Convert.toLua(lua, value)) Lua.pushnil(lua);
+		}
+	}
+
 	function getErrorMessage()
 	{
 		var v:String = Lua.tostring(lua, -1);
@@ -2833,6 +2901,8 @@ class FunkinLua extends FunkinScript
 	override public function call(func:String, ?args:Array<Dynamic>):Dynamic
 	{
 	#if LUA_ALLOWED
+	if (lua == null) return Function_Continue;
+	final stackTop = Lua.gettop(lua);
 	try
 	{
 		if (args == null) args = [];
@@ -2847,7 +2917,7 @@ class FunkinLua extends FunkinScript
 		{
 		#end
 			for (arg in args)
-				Convert.toLua(lua, arg);
+				pushLuaValue(arg);
 			var result:Dynamic = Lua.pcall(lua, args.length, 1, 0);
 			if (result != 0)
 			{
@@ -2887,6 +2957,8 @@ class FunkinLua extends FunkinScript
 		}
 		catch (e:Dynamic)
 		{
+			if (lua != null) Lua.settop(lua, stackTop);
+			Main.writeDiagnostic("Lua exception [" + scriptName + "." + func + "]: " + e);
 			trace(e);
 		}
 		#end
@@ -2962,8 +3034,17 @@ class FunkinLua extends FunkinScript
 		
 		// trace('trying to add var: ' + variable + ' with data: ' + data + ' data type: ' + Type.typeof(data));
 		
-		Convert.toLua(lua, data);
-		Lua.setglobal(lua, variable);
+		final stackTop = Lua.gettop(lua);
+		try
+		{
+			pushLuaValue(data);
+			Lua.setglobal(lua, variable);
+		}
+		catch (error:Dynamic)
+		{
+			Lua.settop(lua, stackTop);
+			Main.writeDiagnostic("Lua variable error [" + scriptName + "." + variable + "]: " + error);
+		}
 		#end
 	}
 	
