@@ -29,6 +29,22 @@ class Main extends Sprite
 		
 	// You can pretty much ignore everything from here on - your code should go in your states.
 	public static var fpsVar:DebugDisplay;
+
+	public static function writeDiagnostic(message:String):Void
+	{
+		#if sys
+		try
+		{
+			final output = sys.io.File.append("nightmarevision-diagnostic.log", false);
+			output.writeString(Date.now().toString() + " " + message + "\n");
+			output.close();
+		}
+		catch (error:Dynamic)
+		{
+			trace("Could not write diagnostic log: " + error);
+		}
+		#end
+	}
 	
 	static function __init__()
 	{
@@ -43,6 +59,7 @@ class Main extends Sprite
 	public function new()
 	{
 		super();
+		writeDiagnostic("Starting NightmareVision");
 
 		initHaxeUI();
 		
@@ -254,6 +271,7 @@ class FNFGame extends FlxGame
 		}
 		
 		final crashReport = 'Error caught:' + e.message + '\nCallstack:\n' + emsg;
+		Main.writeDiagnostic(crashReport);
 		
 		FlxG.switchState(new funkin.backend.FallbackState(crashReport, () -> FlxG.switchState(() -> new MainMenuState())));
 	}
