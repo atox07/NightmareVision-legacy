@@ -21,7 +21,7 @@ class FunkinCache
 		@:privateAccess
 		for (key in FlxG.bitmap._cache.keys())
 		{
-			if (!currentTrackedGraphics.exists(key) && !key.startsWith('NMV_DEBUG'))
+			if (!currentTrackedGraphics.exists(key) && !key.startsWith('NMV_DEBUG') && FlxG.bitmap.get(key).useCount == 0)
 			{
 				disposeGraphic(FlxG.bitmap.get(key));
 			}
@@ -48,7 +48,7 @@ class FunkinCache
 	{
 		for (key in currentTrackedGraphics.keys())
 		{
-			if (!localTrackedAssets.contains(key) && !dumpExclusions.contains(key))
+			if (!localTrackedAssets.contains(key) && !dumpExclusions.contains(key) && currentTrackedGraphics.get(key).useCount == 0)
 			{
 				disposeGraphic(currentTrackedGraphics.get(key));
 				currentTrackedGraphics.remove(key);
@@ -84,8 +84,7 @@ class FunkinCache
 	 */
 	public function disposeGraphic(graphic:FlxGraphic)
 	{
-		if (graphic != null && graphic.bitmap != null && graphic.bitmap.__texture != null) graphic.bitmap.__texture.dispose();
-		FlxG.bitmap.remove(graphic);
+		if (graphic != null) FlxG.bitmap.remove(graphic);
 	}
 	
 	/**
