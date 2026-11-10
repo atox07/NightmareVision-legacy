@@ -4333,6 +4333,7 @@ class PlayState extends MusicBeatState
 			script = FlxDestroyUtil.destroy(script);
 		}
 		
+		Main.writeDiagnostic("Closed PlayState scripts");
 		hscriptArray = [];
 		funkyScripts = [];
 		luaArray = [];
