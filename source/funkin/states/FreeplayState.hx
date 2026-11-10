@@ -49,6 +49,7 @@ class FreeplayState extends MusicBeatState
 	
 	override function create()
 	{
+		Main.writeDiagnostic("Entering Freeplay");
 		FunkinAssets.cache.clearStoredMemory();
 		// FunkinAssets.cache.clearUnusedMemory();
 		
@@ -87,6 +88,7 @@ class FreeplayState extends MusicBeatState
 			}
 		}
 		WeekData.loadTheFirstEnabledMod();
+		Main.writeDiagnostic("Freeplay songs: " + songs.length);
 		
 		setUpScript();
 		
@@ -95,6 +97,10 @@ class FreeplayState extends MusicBeatState
 		
 		if (isHardcodedState())
 		{
+			if (songs.length == 0)
+			{
+				throw "Freeplay: nessun brano disponibile nelle settimane abilitate.";
+			}
 			bg = new FlxSprite().loadGraphic(Paths.image('menuDesat'));
 			bg.antialiasing = ClientPrefs.globalAntialiasing;
 			add(bg);
