@@ -65,6 +65,7 @@ class FunkinLua extends FunkinScript
 	public function new(script:String, ?name:String)
 	{
 		#if LUA_ALLOWED
+		Main.writeDiagnostic("Loading Lua: " + script);
 		lua = LuaL.newstate();
 		LuaL.openlibs(lua);
 		Lua.init_callbacks(lua);
@@ -79,9 +80,10 @@ class FunkinLua extends FunkinScript
 			
 			var result = isString ? LuaL.dostring(lua, script) : LuaL.dofile(lua, script);
 			
-			var resultStr:String = Lua.tostring(lua, result);
-			if (resultStr != null && result != 0)
+			if (result != 0)
 			{
+				var resultStr:String = Lua.tostring(lua, -1);
+				Main.writeDiagnostic("Lua load error [" + script + "]: " + resultStr);
 				trace('Error on lua script! ' + resultStr);
 				#if windows
 				lime.app.Application.current.window.alert(resultStr, 'Error on lua script!');
@@ -94,6 +96,7 @@ class FunkinLua extends FunkinScript
 		}
 		catch (e:Dynamic)
 		{
+			Main.writeDiagnostic("Lua load exception [" + script + "]: " + e);
 			trace(e);
 			return;
 		}
@@ -2420,7 +2423,9 @@ class FunkinLua extends FunkinScript
 			return str.endsWith(end);
 		});
 		
+		Main.writeDiagnostic("Calling Lua onCreate: " + script);
 		call('onCreate', []);
+		Main.writeDiagnostic("Loaded Lua: " + script);
 		// PlayState.instance.callOnScripts('onCreate', []);
 		#end
 	}
@@ -2839,6 +2844,7 @@ class FunkinLua extends FunkinScript
 			if (result != 0)
 			{
 				var err = getErrorMessage();
+				Main.writeDiagnostic("Lua callback error [" + scriptName + "." + func + "]: " + err);
 				if (errorHandler != null)
 				{
 					errorHandler(err);
