@@ -98,12 +98,14 @@ class Song
 		final formattedSong:String = Paths.formatToSongPath(jsonInput);
 		
 		final path = Paths.json('$formattedFolder/$formattedSong');
+		Main.writeDiagnostic("Loading chart: " + path);
 		
 		final rawJson = FunkinAssets.getContent(path).trim();
 		
 		final songJson:SwagSong = parseJSON(rawJson);
 		if (jsonInput != 'events') StageData.loadDirectory(songJson);
 		convertFormat(songJson);
+		Main.writeDiagnostic("Loaded chart: " + path);
 		return songJson;
 	}
 	
